@@ -3,13 +3,12 @@ import os
 import logging
 from dotenv import load_dotenv
 
-# Carregar chave da API do SerpApi da variável de ambiente
+#CARREGA AS CHAVES DA API
 load_dotenv()
 
 SERPAPI_API_KEY = os.getenv('SERPAPI_API_KEY')
 SERPAPI_SEARCH_URL = "https://serpapi.com/search"
 
-# Função para buscar informações na web
 def pesquisar_na_web(query):
     try:
         params = {

@@ -1,31 +1,31 @@
 from flask import Flask, request, jsonify
 import logging
 from dotenv import load_dotenv
-from audio_processing import transcrever_audio, filtrar_texto, gerar_audio_resposta, validar_arquivo
-from web_search import pesquisar_na_web
-from cache.cache_manager import obter_cache, armazenar_cache
 import os
 import tempfile
 import base64
+from audio_processing import transcrever_audio, gerar_audio_resposta, validar_arquivo
+from web_search import pesquisar_na_web
+from cache.cache_manager import obter_cache, armazenar_cache
 
 # Carregar variáveis de ambiente
 load_dotenv()
 
-# Configura o logging
+# Configuração de logging
 log_level = os.getenv('LOG_LEVEL', 'DEBUG').upper()
 logging.basicConfig(filename='logs/api.log', level=getattr(logging, log_level), format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Inicializa o Flask
 app = Flask(__name__)
 
-# Função para identificar palavras-chave 
+# Função para filtrar texto
 def filtrar_por_palavra_chave(texto):
     palavras_chaves = ["pesquisar", "buscar"]
     for palavra in palavras_chaves:
         posicao = texto.lower().find(palavra)
         if posicao != -1:
             return texto[posicao + len(palavra):].strip()
-    return texto  
+    return texto
 
 @app.route('/processar_audio', methods=['POST'])
 def processar_audio():
@@ -34,7 +34,9 @@ def processar_audio():
 
     try:
         audio_file = request.files['audio']
-        validar_arquivo(audio_file) 
+        validar_arquivo(audio_file)
+
+        # Criação de arquivo temporário para armazenar o áudio
         with tempfile.NamedTemporaryFile(delete=False, suffix='.ogg') as temp_audio:
             audio_file.save(temp_audio.name)
             logging.info(f"Áudio recebido e salvo em {temp_audio.name}.")
@@ -46,11 +48,10 @@ def processar_audio():
 
             texto_filtrado = filtrar_por_palavra_chave(texto_transcrito)
 
-           
             if "pesquisar" in texto_filtrado.lower() or "buscar" in texto_filtrado.lower():
                 query = texto_filtrado.replace("pesquisar", "").replace("buscar", "").strip()
 
-               
+                # Verifica se a pesquisa já foi realizada anteriormente
                 cache_resultados = obter_cache(query)
                 if cache_resultados:
                     logging.info(f"Resultados encontrados no cache para a consulta: {query}")
@@ -63,10 +64,10 @@ def processar_audio():
                         logging.warning(f"Sem resultados para a pesquisa: {query}")
                         return jsonify({"message": "Nenhum resultado relevante encontrado."}), 404
 
-               
                 texto_audio = f"Sua pesquisa sobre {query} resultou em {len(resultados_pesquisa)} resultados encontrados."
                 arquivo_audio_resposta = gerar_audio_resposta(texto_audio)
 
+                # Converte o arquivo de áudio em base64
                 with open(arquivo_audio_resposta, 'rb') as audio_file:
                     audio_content = base64.b64encode(audio_file.read()).decode('utf-8')
 
@@ -90,7 +91,7 @@ def processar_audio():
         return jsonify({"error": "Ocorreu um erro ao processar o áudio. Tente novamente mais tarde."}), 500
     finally:
         try:
-            if 'temp_audio' in locals():
+            if 'temp_audio' in locals() and os.path.exists(temp_audio.name):
                 os.remove(temp_audio.name)
                 logging.info(f"Arquivo temporário {temp_audio.name} removido com sucesso.")
         except Exception as e:
