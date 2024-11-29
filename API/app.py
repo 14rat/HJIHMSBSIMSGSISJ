@@ -73,18 +73,23 @@ def processar_audio():
             query = texto_filtrado.strip()
 
             # Tentativa de obter resultados do cache
-            cache_resultados = obter_cache(query)
-            if cache_resultados:
-                logging.info(f"Resultados encontrados no cache para a consulta: {query}")
-                resultados_pesquisa = cache_resultados
-            else:
-                logging.info(f"Buscando resultados para a consulta: {query}")
-                resultados_pesquisa = pesquisar_na_web(query)
-                if resultados_pesquisa:
-                    armazenar_cache(query, resultados_pesquisa)
+            try:
+                cache_resultados = obter_cache(query)
+                if cache_resultados:
+                    logging.info(f"Resultados encontrados no cache para a consulta: {query}")
+                    resultados_pesquisa = cache_resultados
                 else:
-                    logging.warning(f"Sem resultados encontrados para a pesquisa: {query}")
-                    return jsonify({"message": "Nenhum resultado relevante encontrado."}), 404
+                    logging.info(f"Buscando resultados para a consulta: {query}")
+                    resultados_pesquisa = pesquisar_na_web(query)
+                    if resultados_pesquisa:
+                        # Armazenando os resultados no cache
+                        armazenar_cache(query, resultados_pesquisa)
+                    else:
+                        logging.warning(f"Sem resultados encontrados para a pesquisa: {query}")
+                        return jsonify({"message": "Nenhum resultado relevante encontrado."}), 404
+            except Exception as e:
+                logging.error(f"Erro ao acessar o cache: {e}")
+                return jsonify({"error": "Erro ao acessar o cache."}), 500
 
             # Geração do áudio de resposta baseado nos resultados encontrados
             texto_audio = f"Sua pesquisa sobre {query} resultou em {len(resultados_pesquisa)} resultados encontrados."
