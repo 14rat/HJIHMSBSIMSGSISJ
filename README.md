@@ -1,3 +1,4 @@
+
 # API de Pesquisa com Áudio e Cache
 
 Esta API permite processar áudios enviados, transcrevendo-os e, caso necessário, realizando uma pesquisa na web. Ela utiliza o **SerpApi** para buscar resultados na web e armazena as respostas em **Cache Redis** para otimizar as requisições subsequentes. Além disso, a API converte respostas em áudio para fornecer resultados de forma mais interativa.
