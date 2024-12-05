@@ -14,18 +14,17 @@ CACHE_DIR = os.getenv('CACHE_DIR', 'API/cache')
 CACHE_TIMEOUT = int(os.getenv('CACHE_TIMEOUT', 3600))
 
 # Configuração do diretório de logs e arquivo de log
-LOG_DIR = os.getenv('LOG_DIR', 'API/logs')  
+LOG_DIR = os.getenv('LOG_DIR', 'API/logs')
 LOG_FILE = os.path.join(LOG_DIR, 'api.log')
 
 # Garantir que os diretórios de cache e log existam
 for directory in [CACHE_DIR, LOG_DIR]:
-    if not os.path.exists(directory):
-        try:
-            os.makedirs(directory, exist_ok=True)
-            logging.info(f"Diretório criado em: {directory}")
-        except Exception as e:
-            logging.error(f"Erro ao criar o diretório {directory}: {e}")
-            raise
+    try:
+        os.makedirs(directory, exist_ok=True)
+        logging.info(f"Diretório {directory} verificado/criado com sucesso.")
+    except Exception as e:
+        logging.error(f"Erro ao criar o diretório {directory}: {e}")
+        raise
 
 # Configuração do logging
 log_level = os.getenv('LOG_LEVEL', 'DEBUG').upper()
@@ -33,12 +32,12 @@ logger = logging.getLogger(__name__)
 logger.setLevel(getattr(logging, log_level))
 
 # Rotacionando arquivos de log
-handler = RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=3)
+handler = RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
 handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(handler)
-logger.addHandler(logging.StreamHandler())  
+logger.addHandler(logging.StreamHandler())
 
-# Criando o cache com diskcache
+# Inicializando o cache com diskcache
 try:
     cache = diskcache.Cache(CACHE_DIR)
     logger.info(f"Cache inicializado com sucesso em {CACHE_DIR}.")
@@ -48,6 +47,15 @@ except Exception as e:
 
 # Função para obter cache
 def obter_cache(query):
+    """
+    Recupera o cache armazenado para uma consulta, se existir.
+
+    Parameters:
+    query (str): A consulta cujo resultado será buscado no cache.
+
+    Returns:
+    dict or None: Dados do cache ou None se não encontrado.
+    """
     try:
         logger.debug(f"Buscando cache para a consulta: {query}")
         cached_result = cache.get(query)
@@ -63,6 +71,14 @@ def obter_cache(query):
 
 # Função para armazenar cache
 def armazenar_cache(query, resultados, expira_em_segundos=CACHE_TIMEOUT):
+    """
+    Armazena os resultados da consulta no cache.
+
+    Parameters:
+    query (str): A consulta para a qual os resultados serão armazenados.
+    resultados (dict): Os resultados a serem armazenados.
+    expira_em_segundos (int): O tempo de expiração do cache em segundos.
+    """
     try:
         logger.debug(f"Armazenando resultados no cache para a consulta: {query}")
 
@@ -70,7 +86,6 @@ def armazenar_cache(query, resultados, expira_em_segundos=CACHE_TIMEOUT):
             logger.warning(f"Tentativa de armazenar resultados vazios para a consulta {query}. Cache não será atualizado.")
             return
 
-        # Garantir que os resultados sejam serializáveis
         try:
             resultados_json = json.dumps(resultados)
         except (TypeError, ValueError) as e:
@@ -85,6 +100,9 @@ def armazenar_cache(query, resultados, expira_em_segundos=CACHE_TIMEOUT):
 
 # Função para limpar o cache
 def limpar_cache():
+    """
+    Limpa todos os dados do cache.
+    """
     try:
         logger.info("Iniciando limpeza do cache...")
         cache.clear()
@@ -94,6 +112,12 @@ def limpar_cache():
 
 # Função de verificação da saúde do cache
 def verificar_conexao():
+    """
+    Verifica se o cache está operacional, realizando um teste de escrita e leitura.
+
+    Returns:
+    bool: Retorna True se o cache estiver operacional, caso contrário False.
+    """
     try:
         test_key = 'test_key'
         test_value = 'test_value'
@@ -110,6 +134,12 @@ def verificar_conexao():
 
 # Função para medir a performance do cache
 def medir_performance(iteracoes=100):
+    """
+    Mede a performance do cache realizando várias operações de leitura e escrita.
+
+    Parameters:
+    iteracoes (int): Número de operações de cache para testar.
+    """
     start_time = time()
 
     for _ in range(iteracoes):

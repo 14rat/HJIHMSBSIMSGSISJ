@@ -1,27 +1,39 @@
 
 # API de Pesquisa com Áudio e Cache
 
-Esta API permite processar áudios enviados, transcrevendo-os e, caso necessário, realizando uma pesquisa na web. Ela utiliza o **SerpApi** para buscar resultados na web e armazena as respostas em **Cache Redis** para otimizar as requisições subsequentes. Além disso, a API converte respostas em áudio para fornecer resultados de forma mais interativa.
+Esta API permite processar áudios enviados, transcrevendo-os e, caso necessário, realizando uma pesquisa na web. Ela utiliza o **SerpApi** para buscar resultados na web e armazena as respostas em **DiskCache** para otimizar as requisições subsequentes. Além disso, a API converte respostas em áudio para fornecer resultados de forma mais interativa.
 
-## Tecnologias Usadas
+## Tecnologias Usadas:
+**json
+ffmpeg
+os
+logging
+python-dotenv
+diskcache
+time
+speech_recognition
+pydub
+gtts 
+tempfile
+typing
+Flask
+request
+base64
+regex
+shutil
+backoff
+hashlib**
 
-- **Flask**: Framework web para a construção da API.
-- **SpeechRecognition**: Biblioteca para transcrição de áudio.
-- **Pydub**: Para conversão de arquivos de áudio.
-- **gTTS (Google Text-to-Speech)**: Para gerar respostas em áudio.
-- **Requests**: Para realizar chamadas HTTP para o SerpApi.
-- **Redis**: Para cache de resultados de pesquisa.
-- **Backoff**: Biblioteca para reintentar requisições falhas com backoff exponencial.
 
 ## Funcionalidades
 
 - **Processamento de Áudio**: A API recebe arquivos de áudio, os transcreve e, se possível, realiza uma pesquisa na web sobre o conteúdo do áudio.
-- **Cache de Resultados**: Armazena resultados de pesquisa no Redis para evitar consultas repetidas.
+- **Cache de Resultados**: Armazena resultados de pesquisa no diskcache para evitar consultas repetidas.
 - **Geração de Resposta em Áudio**: As respostas das pesquisas são convertidas para áudio usando gTTS e retornadas como um arquivo.
 
-## Endpoints
+# Endpoints:
 
-### `/processar_audio` [POST]
+**`/processar_audio` [POST]**
 
 Este endpoint recebe um arquivo de áudio e retorna a transcrição do áudio, a consulta filtrada e os resultados da pesquisa, junto com uma resposta em áudio.
 
@@ -53,21 +65,24 @@ Este endpoint recebe um arquivo de áudio e retorna a transcrição do áudio, a
   ],
   "audio": "data:audio/mp3;base64,..."
 }
+```
 
-### PRÉ-REQUISITOS
+# PRÉ-REQUISITOS
 
-Python 3.x: A API foi desenvolvida para rodar com Python 3.
-Redis: A API utiliza Redis como cache. Você pode rodar uma instância local do Redis ou usar um serviço na nuvem como Redis Labs.
-Chave da API do SerpApi: Para realizar buscas na web, é necessário ter uma chave de API do SerpApi.
+**Python 3.x**: A API foi desenvolvida para rodar com Python 3.
+**Chave da API do SerpApi**: Para realizar buscas na web, é necessário ter uma chave de API do SerpApi.
 
 ### INSTALANDO DEPENDÊNCIAS
 
 Clone o repositório:
 git clone https://github.com/14rat/HJIHMSBSIMSGSISJ.git
 cd API
-Instalar as dependências:
+
+# Instalar as dependências:
 pip install -r requirements.txt
-Criar o arquivo .env na raiz do projeto:
+
+# Criar o arquivo .env na raiz do projeto:
+
 # Nível de log
 LOG_LEVEL=DEBUG
 
@@ -87,16 +102,19 @@ SERPAPI_SEARCH_TIMEOUT=10  # Timeout de 10 segundos
 
 # Expiração do cache (em segundos)
 CACHE_EXPIRATION=3600  # 1 hora
-Rodar o servidor:
+# Rodar o servidor:
 python app.py
-Contribuindo
 
-### Se você deseja contribuir para o projeto, siga estas etapas:
-
-Fork o repositório: Clique no botão "Fork" no GitHub para criar uma cópia do repositório na sua conta.
-Clone o repositório forkado: Faça o clone do repositório para a sua máquina local.
-Crie uma nova branch: Crie uma branch para sua funcionalidade ou correção de bug.
-Faça as alterações: Implemente a funcionalidade ou correção desejada.
-Faça o commit das alterações.
-Envie a branch para o seu repositório remoto.
-Abra um Pull Request: Vá para a página do seu repositório no GitHub e clique em "Compare & Pull Request" para enviar seu código para análise.
+# Exemplos de Resultados de Erro:
+**Erro de Validação de Áudio**
+```json
+{
+  "error": "Arquivo não encontrado."
+}
+```
+**Erro ao Processar o Áudio**
+```json
+{
+  "error": "Ocorreu um erro ao processar o áudio. Tente novamente mais tarde."
+}
+```

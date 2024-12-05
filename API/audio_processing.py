@@ -4,20 +4,39 @@ from gtts import gTTS
 import tempfile
 import logging
 import os
-import io
+from typing import Union, Dict
+from check_audio import check_audio
 
-def transcrever_audio(arquivo_audio):
+# Configuração do logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def transcrever_audio(arquivo_audio: str) -> Union[str, None]:
+    """
+    Função para transcrever o conteúdo de um arquivo de áudio para texto.
+
+    Parameters:
+    arquivo_audio (str): Caminho para o arquivo de áudio a ser transcrito.
+
+    Returns:
+    Union[str, None]: Texto transcrito ou mensagens de erro.
+    """
+    if not os.path.exists(arquivo_audio):
+        logging.error(f"Arquivo de áudio não encontrado: {arquivo_audio}")
+        return "Arquivo de áudio não encontrado."
+
     r = sr.Recognizer()
-    temp_wav = None  
+    temp_wav = None 
+
     try:
         logging.info(f"Iniciando o processamento do áudio: {arquivo_audio}")
 
-        # Verificar se o arquivo realmente existe
-        if not os.path.exists(arquivo_audio):
-            logging.error(f"O arquivo de áudio não existe: {arquivo_audio}")
-            return "Arquivo de áudio não encontrado."
+        # Validar o áudio
+        validation_result = check_audio(arquivo_audio)
+        if validation_result['status'] != 'success':
+            logging.error(f"Erro na validação do áudio: {validation_result['message']}")
+            return f"Erro na validação do áudio: {validation_result['message']}"
 
-        # Convertemos o áudio para WAV
+        # Converter áudio para WAV
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as temp_wav:
             try:
                 audio = AudioSegment.from_file(arquivo_audio)
@@ -27,25 +46,30 @@ def transcrever_audio(arquivo_audio):
                 logging.error(f"Erro ao converter o áudio para WAV: {e}")
                 return "Erro ao converter o áudio para o formato adequado."
 
-        # Realizar o reconhecimento de áudio com o SpeechRecognition
-        try:
-            with sr.AudioFile(temp_wav.name) as source:
+        # Reconhecimento de áudio
+        with sr.AudioFile(temp_wav.name) as source:
+            try:
                 logging.info(f"Preparando para reconhecer áudio em: {temp_wav.name}")
                 audio_data = r.record(source)
                 texto = r.recognize_google(audio_data, language="pt-BR")
                 logging.info(f"Texto transcrito com sucesso: {texto}")
                 return texto
-        except sr.UnknownValueError:
-            logging.error("Erro: O áudio não pôde ser transcrito.")
-            return "Não consegui entender o áudio."
-        except sr.RequestError as e:
-            logging.error(f"Erro ao se conectar ao serviço de reconhecimento: {e}")
-            return "Erro ao processar o áudio, tente novamente mais tarde."
-        except Exception as e:
-            logging.error(f"Erro inesperado ao transcrever o áudio: {e}")
-            return "Erro ao processar o áudio."
+            except sr.UnknownValueError:
+                logging.error("Erro: O áudio não pôde ser transcrito.")
+                return "Não consegui entender o áudio."
+            except sr.RequestError as e:
+                logging.error(f"Erro ao se conectar ao serviço de reconhecimento: {e}")
+                return "Erro ao processar o áudio, tente novamente mais tarde."
+            except Exception as e:
+                logging.error(f"Erro inesperado ao transcrever o áudio: {e}")
+                return "Erro ao processar o áudio."
+
+    except Exception as e:
+        logging.error(f"Erro geral no processamento do áudio: {e}")
+        return "Erro ao processar o áudio."
+
     finally:
-        # Garantir que o arquivo temporário seja removido após o uso
+        # Limpeza do arquivo temporário de forma segura
         if temp_wav and os.path.exists(temp_wav.name):
             try:
                 os.remove(temp_wav.name)
@@ -54,41 +78,52 @@ def transcrever_audio(arquivo_audio):
                 logging.warning(f"Erro ao tentar excluir o arquivo temporário WAV: {e}")
 
 
-def gerar_audio_resposta(texto_resposta):
+def gerar_audio_resposta(texto: str) -> Union[str, str]:
+    """
+    Função para gerar um arquivo de áudio a partir de um texto.
+
+    Parameters:
+    texto (str): Texto a ser convertido em áudio.
+
+    Returns:
+    Union[str, str]: Caminho para o arquivo de áudio gerado ou mensagem de erro.
+    """
+    if not texto:
+        logging.error("Texto vazio fornecido para gerar o áudio.")
+        return "Texto vazio fornecido."
+
     try:
-        logging.info(f"Iniciando a geração de áudio para a resposta: {texto_resposta}")
+        logging.info(f"Gerando áudio de resposta para o texto: {texto}")
 
-        if not texto_resposta or len(texto_resposta.strip()) == 0:
-            logging.error("Texto da resposta vazio ou inválido.")
-            return None
+        # Gerar o áudio de resposta
+        tts = gTTS(texto, lang='pt', slow=False)
+        temp_audio_file = tempfile.mktemp(suffix=".mp3")
+        tts.save(temp_audio_file)
 
-        tts = gTTS(text=texto_resposta, lang='pt')
+        logging.info(f"Áudio gerado com sucesso: {temp_audio_file}")
+        return temp_audio_file
 
-        # Gerar o arquivo de áudio temporário MP3
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp3') as temp_mp3:
-            tts.save(temp_mp3.name)
-            logging.info(f"Áudio de resposta gerado e salvo em: {temp_mp3.name}")
-            return temp_mp3.name
     except Exception as e:
         logging.error(f"Erro ao gerar áudio de resposta: {e}")
-        return None
+        return "Erro ao gerar áudio."
 
 
-def validar_arquivo(audio_file):
+def check_audio_validity(arquivo_audio: str) -> Dict[str, str]:
+    """
+    Verifica se o arquivo de áudio tem o formato adequado.
+
+    Parameters:
+    arquivo_audio (str): Caminho para o arquivo de áudio.
+
+    Returns:
+    Dict[str, str]: Status da validação do arquivo de áudio.
+    """
+    if not arquivo_audio.endswith(('.mp3', '.wav', '.flac', '.m4a')):
+        return {"status": "error", "message": "Formato de áudio inválido. Suporte para MP3, WAV, FLAC e M4A."}
+
     try:
-        formatos_validos = ['audio/ogg', 'audio/mpeg', 'audio/wav']
-        if audio_file.mimetype not in formatos_validos:
-            raise ValueError(f"Formato de arquivo não suportado. Formatos válidos são: {', '.join(formatos_validos)}.")
-
-        if audio_file.content_length > 10 * 1024 * 1024: 
-            raise ValueError("O arquivo excede o tamanho máximo permitido de 10MB.")
-
-        logging.info(f"Arquivo de áudio validado com sucesso: {audio_file.filename}")
-    except ValueError as e:
-        logging.error(f"Erro na validação do arquivo {audio_file.filename}: {e}")
-        raise  
+        AudioSegment.from_file(arquivo_audio)
+        return {"status": "success", "message": "Áudio válido."}
     except Exception as e:
-        logging.error(f"Erro desconhecido ao validar o arquivo {audio_file.filename}: {e}")
-        raise
-
-
+        logging.error(f"Erro ao verificar a validade do áudio: {e}")
+        return {"status": "error", "message": "Erro ao verificar a validade do áudio."}
